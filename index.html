@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sketch & Go — Draw, then animate</title>
+  <style>
+    :root {
+      --ink: #24332b;
+      --muted: #758178;
+      --green: #39785c;
+      --green-dark: #285c43;
+      --paper: #f7f8f4;
+      --line: #e5ebe5;
+      --card: #fff;
+      --shadow: 0 12px 35px rgba(35, 60, 45, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, select { font: inherit; }
+
+    button { cursor: pointer; }
+
+    .app {
+      width: min(1120px, calc(100% - 36px));
+      margin: auto;
+      padding: 24px 0 50px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 15px;
+      color: white;
+      background: var(--green);
+      font-size: 23px;
+    }
+
+    .brand h1 { margin: 0; font-size: 19px; letter-spacing: -.5px; }
+    .brand p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+
+    .step-badge {
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      background: white;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .intro { margin-bottom: 22px; }
+    .intro h2 { margin: 0 0 7px; font-size: clamp(25px, 4vw, 34px); letter-spacing: -1.2px; }
+    .intro p { margin: 0; color: var(--muted); line-height: 1.5; }
+
+    .card {
+      padding: 22px;
+      border: 1px solid rgba(30, 60, 40, .04);
+      border-radius: 20px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .tool-group {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .tool-btn, .secondary-btn {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 38px;
+      padding: 8px 12px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      background: white;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .tool-btn:hover, .secondary-btn:hover { background: #f3f6f3; }
+    .tool-btn.active { background: #e8f2eb; color: var(--green-dark); }
+
+    .tool-btn:disabled {
+      cursor: not-allowed;
+      opacity: .4;
+    }
+
+    .color-input {
+      width: 35px;
+      height: 34px;
+      padding: 2px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .size-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input[type="range"] { accent-color: var(--green); }
+
+    .size-control input { width: 90px; }
+
+    .toolbar-spacer { flex: 1; }
+
+    .canvas-wrap {
+      overflow: hidden;
+      border: 1px solid #e5ebe5;
+      border-radius: 15px;
+      background-color: #fff;
+      background-image:
+        linear-gradient(45deg, #f0f3ef 25%, transparent 25%),
+        linear-gradient(-45deg, #f0f3ef 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #f0f3ef 75%),
+        linear-gradient(-45deg, transparent 75%, #f0f3ef 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+    }
+
+    #drawingCanvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 900 / 540;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    .editor-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 15px;
+    }
+
+    .hint, .status {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status { min-height: 18px; margin-top: 10px; }
+
+    .primary-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 11px 18px;
+      border: 0;
+      border-radius: 11px;
+      background: var(--green);
+      color: white;
+      font-weight: 700;
+      transition: background .2s, transform .2s;
+    }
+
+    .primary-btn:hover { background: var(--green-dark); transform: translateY(-1px); }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    .stage-card { padding: 18px; }
+    .stage-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .stage-top h2 { margin: 0 0 4px; font-size: 22px; }
+    .stage-top p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .stage-wrap {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: #eef5e9;
+    }
+
+    #stageCanvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 900 / 540;
+    }
+
+    .stage-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 13px;
+      padding-top: 17px;
+    }
+
+    .control-field {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .control-field select {
+      min-width: 130px;
+      padding: 9px 11px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: white;
+      color: var(--ink);
+    }
+
+    .speed-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+    }
+
+    .speed-control input { width: 110px; }
+    .stage-actions { display: flex; gap: 8px; margin-left: auto; }
+
+    .secondary-btn {
+      min-height: 42px;
+      border-color: var(--line);
+    }
+
+    .stage-note {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 650px) {
+      .app { width: min(100% - 22px, 1120px); padding-top: 17px; }
+      header { margin-bottom: 25px; }
+      .card { padding: 14px; border-radius: 16px; }
+      .toolbar { gap: 7px; }
+      .tool-group { gap: 3px; padding: 4px; }
+      .tool-btn { padding: 7px 9px; }
+      .toolbar-spacer { display: none; }
+      .editor-footer { align-items: stretch; flex-direction: column; }
+      .editor-footer .primary-btn { width: 100%; }
+      .stage-top { align-items: flex-start; flex-direction: column; }
+      .stage-actions { width: 100%; margin-left: 0; }
+      .stage-actions button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">✏️</div>
+        <div>
+          <h1>Sketch &amp; Go</h1>
+          <p>Draw something. Watch it come to life.</p>
+        </div>
+      </div>
+      <div class="step-badge" id="stepBadge">Step 1 of 2 · Draw</div>
+    </header>
+
+    <section class="intro">
+      <h2 id="pageTitle">Make a little masterpiece</h2>
+      <p id="pageDescription">Draw an object below, then send it into the animation stage.</p>
+    </section>
+
+    <section class="screen active" id="editorScreen">
+      <div class="card">
+        <div class="toolbar" aria-label="Drawing tools">
+          <div class="tool-group">
+            <button class="tool-btn active" id="penBtn" type="button" aria-pressed="true">✏️ Pen</button>
+            <button class="tool-btn" id="eraserBtn" type="button" aria-pressed="false">⌫ Eraser</button>
+          </div>
+
+          <div class="tool-group">
+            <label for="colorPicker" class="hint">Color</label>
+            <input class="color-input" id="colorPicker" type="color" value="#39785c" aria-label="Brush color">
+          </div>
+
+          <div class="tool-group size-control">
+            <label for="brushSize">Size</label>
+            <input id="brushSize" type="range" min="2" max="40" value="9">
+            <span id="sizeValue">9</span>
+          </div>
+
+          <div class="toolbar-spacer"></div>
+
+          <div class="tool-group">
+            <button class="tool-btn" id="undoBtn" type="button" title="Undo">↶ Undo</button>
+            <button class="tool-btn" id="redoBtn" type="button" title="Redo">↷ Redo</button>
+            <button class="tool-btn" id="clearBtn" type="button">Clear</button>
+          </div>
+        </div>
+
+        <div class="canvas-wrap">
+          <canvas id="drawingCanvas" width="900" height="540" aria-label="Drawing canvas"></canvas>
+        </div>
+
+        <div class="status" id="editorStatus" role="status" aria-live="polite"></div>
+
+        <div class="editor-footer">
+          <span class="hint">Tip: draw with your mouse, finger, or stylus.</span>
+          <button class="primary-btn" id="animateBtn" type="button">Animate my drawing <span aria-hidden="true">→</span></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="stageScreen">
+      <div class="card stage-card">
+        <div class="stage-top">
+          <div>
+            <h2>Your drawing is moving!</h2>
+            <p>Pick a motion style, then replay your creation.</p>
+          </div>
+          <button class="secondary-btn" id="backBtn" type="button">← Back to drawing</button>
+        </div>
+
+        <div class="stage-wrap">
+          <canvas id="stageCanvas" width="900" height="540" aria-label="Animation stage"></canvas>
+        </div>
+
+        <div class="stage-controls">
+          <label class="control-field">
+            Motion
+            <select id="motionSelect">
+              <option value="float">Float</option>
+              <option value="bounce">Bounce</option>
+              <option value="fly">Fly across</option>
+              <option value="spin">Spin</option>
+            </select>
+          </label>
+
+          <label class="control-field">
+            Background
+            <select id="backgroundSelect">
+              <option value="#eef5e9">Meadow</option>
+              <option value="#e9f2f8">Sky</option>
+              <option value="#fff1e5">Peach</option>
+              <option value="#f0eafb">Lavender</option>
+              <option value="#ffffff">White</option>
+            </select>
+          </label>
+
+          <label class="control-field">
+            Speed
+            <span class="speed-control">
+              <span>🐢</span>
+              <input id="speedRange" type="range" min="0.4" max="2.5" step="0.1" value="1">
+              <span>🐇</span>
+            </span>
+          </label>
+
+          <div class="stage-actions">
+            <button class="secondary-btn" id="pauseBtn" type="button">⏸ Pause</button>
+            <button class="primary-btn" id="replayBtn" type="button">↻ Replay</button>
+            <button class="secondary-btn" id="downloadBtn" type="button">↓ Download</button>
+          </div>
+        </div>
+
+        <p class="stage-note">Your sketch is animated in this browser and is not uploaded anywhere.</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const drawingCanvas = document.getElementById("drawingCanvas");
+    const drawingContext = drawingCanvas.getContext("2d", { willReadFrequently: true });
+    const stageCanvas = document.getElementById("stageCanvas");
+    const stageContext = stageCanvas.getContext("2d");
+
+    const editorScreen = document.getElementById("editorScreen");
+    const stageScreen = document.getElementById("stageScreen");
+    const editorStatus = document.getElementById("editorStatus");
+
+    const penBtn = document.getElementById("penBtn");
+    const eraserBtn = document.getElementById("eraserBtn");
+    const undoBtn = document.getElementById("undoBtn");
+    const redoBtn = document.getElementById("redoBtn");
+    const colorPicker = document.getElementById("colorPicker");
+    const brushSize = document.getElementById("brushSize");
+    const sizeValue = document.getElementById("sizeValue");
+
+    let drawing = false;
+    let activeTool = "pen";
+    let history = [];
+    let redoHistory = [];
+    let spriteCanvas = null;
+    let spriteWidth = 0;
+    let spriteHeight = 0;
+    let elapsed = 0;
+    let lastFrameTime = 0;
+    let isPlaying = true;
+    let animationFrameId = null;
+    let stageWidth = 900;
+    let stageHeight = 540;
+    let deviceScale = 1;
+
+    drawingContext.lineCap = "round";
+    drawingContext.lineJoin = "round";
+
+    function getDrawingPoint(event) {
+      const rect = drawingCanvas.getBoundingClientRect();
+      return {
+        x: (event.clientX - rect.left) * drawingCanvas.width / rect.width,
+        y: (event.clientY - rect.top) * drawingCanvas.height / rect.height
+      };
+    }
+
+    function saveHistory() {
+      history.push(drawingContext.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height));
+      if (history.length > 30) history.shift();
+      redoHistory = [];
+      updateHistoryButtons();
+    }
+
+    function restoreSnapshot(snapshot) {
+      drawingContext.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+      drawingContext.putImageData(snapshot, 0, 0);
+    }
+
+    function updateHistoryButtons() {
+      undoBtn.disabled = history.length === 0;
+      redoBtn.disabled = redoHistory.length === 0;
+    }
+
+    function setTool(tool) {
+      activeTool = tool;
+      penBtn.classList.toggle("active", tool === "pen");
+      eraserBtn.classList.toggle("active", tool === "eraser");
+      penBtn.setAttribute("aria-pressed", String(tool === "pen"));
+      eraserBtn.setAttribute("aria-pressed", String(tool === "eraser"));
+      drawingCanvas.style.cursor = tool === "eraser" ? "cell" : "crosshair";
+    }
+
+    penBtn.addEventListener("click", () => setTool("pen"));
+    eraserBtn.addEventListener("click", () => setTool("eraser"));
+
+    brushSize.addEventListener("input", () => {
+      sizeValue.textContent = brushSize.value;
+    });
+
+    drawingCanvas.addEventListener("pointerdown", event => {
+      event.preventDefault();
+      drawingCanvas.setPointerCapture(event.pointerId);
+      saveHistory();
+      drawing = true;
+
+      const point = getDrawingPoint(event);
+      drawingContext.beginPath();
+      drawingContext.moveTo(point.x, point.y);
+      drawingContext.lineTo(point.x + 0.1, point.y);
+
+      drawingContext.globalCompositeOperation =
+        activeTool === "eraser" ? "destination-out" : "source-over";
+      drawingContext.strokeStyle = colorPicker.value;
+      drawingContext.lineWidth = Number(brushSize.value);
+      drawingContext.stroke();
+    });
+
+    drawingCanvas.addEventListener("pointermove", event => {
+      if (!drawing) return;
+
+      const point = getDrawingPoint(event);
+      drawingContext.globalCompositeOperation =
+        activeTool === "eraser" ? "destination-out" : "source-over";
+      drawingContext.strokeStyle = colorPicker.value;
+      drawingContext.lineWidth = Number(brushSize.value);
+      drawingContext.lineTo(point.x, point.y);
+      drawingContext.stroke();
+    });
+
+    function finishStroke() {
+      if (!drawing) return;
+      drawing = false;
+      drawingContext.closePath();
+      drawingContext.globalCompositeOperation = "source-over";
+      editorStatus.textContent = "";
+    }
+
+    drawingCanvas.addEventListener("pointerup", finishStroke);
+    drawingCanvas.addEventListener("pointercancel", finishStroke);
+    drawingCanvas.addEventListener("lostpointercapture", finishStroke);
+
+    undoBtn.addEventListener("click", () => {
+      if (!history.length) return;
+      redoHistory.push(drawingContext.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height));
+      restoreSnapshot(history.pop());
+      updateHistoryButtons();
+    });
+
+    redoBtn.addEventListener("click", () => {
+      if (!redoHistory.length) return;
+      history.push(drawingContext.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height));
+      restoreSnapshot(redoHistory.pop());
+      updateHistoryButtons();
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      const pixels = drawingContext.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height);
+      const hasDrawing = pixels.data.some((value, index) => index % 4 === 3 && value > 0);
+      if (!hasDrawing) return;
+
+      saveHistory();
+      drawingContext.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+      editorStatus.textContent = "Canvas cleared. You can undo if needed.";
+    });
+
+    function makeCroppedSprite() {
+      const pixels = drawingContext.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height);
+      const data = pixels.data;
+      let minX = drawingCanvas.width;
+      let minY = drawingCanvas.height;
+      let maxX = -1;
+      let maxY = -1;
+
+      for (let y = 0; y < drawingCanvas.height; y++) {
+        for (let x = 0; x < drawingCanvas.width; x++) {
+          const alpha = data[(y * drawingCanvas.width + x) * 4 + 3];
+          if (alpha > 0) {
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+
+      if (maxX < 0 || maxY < 0) return null;
+
+      const padding = 24;
+      minX = Math.max(0, minX - padding);
+      minY = Math.max(0, minY - padding);
+      maxX = Math.min(drawingCanvas.width - 1, maxX + padding);
+      maxY = Math.min(drawingCanvas.height - 1, maxY + padding);
+
+      const cropped = document.createElement("canvas");
+      cropped.width = maxX - minX + 1;
+      cropped.height = maxY - minY + 1;
+      cropped.getContext("2d").drawImage(
+        drawingCanvas,
+        minX, minY, cropped.width, cropped.height,
+        0, 0, cropped.width, cropped.height
+      );
+
+      return cropped;
+    }
+
+    function resizeStage() {
+      const rect = stageCanvas.getBoundingClientRect();
+      if (!rect.width) return;
+
+      deviceScale = Math.min(window.devicePixelRatio || 1, 2);
+      stageWidth = rect.width;
+      stageHeight = rect.width * 540 / 900;
+      stageCanvas.width = Math.round(stageWidth * deviceScale);
+      stageCanvas.height = Math.round(stageHeight * deviceScale);
+      stageContext.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
+    }
+
+    function drawStage() {
+      const background = document.getElementById("backgroundSelect").value;
+      stageContext.clearRect(0, 0, stageWidth, stageHeight);
+      stageContext.fillStyle = background;
+      stageContext.fillRect(0, 0, stageWidth, stageHeight);
+
+      if (!spriteCanvas) return;
+
+      const userScale = Number(document.getElementById("speedRange").dataset.size || 1);
+      const fitScale = Math.min(
+        stageWidth * 0.37 / spriteWidth,
+        stageHeight * 0.48 / spriteHeight,
+        1.4
+      );
+      const scale = fitScale * userScale;
+      const width = spriteWidth * scale;
+      const height = spriteHeight * scale;
+      const time = elapsed;
+      const motion = document.getElementById("motionSelect").value;
+
+      let x = stageWidth / 2;
+      let y = stageHeight / 2;
+      let rotation = 0;
+
+      if (motion === "float") {
+        x += Math.sin(time * 0.8) * stageWidth * 0.2;
+        y += Math.sin(time * 2.2) * stageHeight * 0.07;
+        rotation = Math.sin(time * 1.5) * 0.08;
+      } else if (motion === "bounce") {
+        const phase = (time * 0.55) % 2;
+        const travel = phase < 1 ? phase : 2 - phase;
+        const left = width / 2 + 12;
+        const right = stageWidth - width / 2 - 12;
+        x = left + Math.max(0, right - left) * travel;
+        y = stageHeight * 0.54 + Math.abs(Math.sin(time * 3)) * stageHeight * 0.12;
+        rotation = Math.sin(time * 3) * 0.12;
+      } else if (motion === "fly") {
+        const span = stageWidth + width;
+        x = ((time * 115) % span) - width / 2;
+        y = stageHeight * 0.48 + Math.sin(time * 2) * stageHeight * 0.13;
+        rotation = Math.sin(time * 2) * 0.1;
+      } else if (motion === "spin") {
+        x += Math.sin(time * 0.8) * stageWidth * 0.11;
+        y += Math.sin(time * 1.8) * stageHeight * 0.05;
+        rotation = time * 1.5;
+      }
+
+      stageContext.save();
+      stageContext.translate(x, y);
+      stageContext.rotate(rotation);
+
+      stageContext.shadowColor = "rgba(34, 60, 42, .20)";
+      stageContext.shadowBlur = 18;
+      stageContext.shadowOffsetY = 9;
+      stageContext.drawImage(spriteCanvas, -width / 2, -height / 2, width, height);
+      stageContext.restore();
+    }
+
+    function animateFrame(now) {
+      if (!lastFrameTime) lastFrameTime = now;
+      const delta = Math.min((now - lastFrameTime) / 1000, 0.05);
+      lastFrameTime = now;
+
+      if (isPlaying) {
+        elapsed += delta * Number(document.getElementById("speedRange").value);
+      }
+
+      drawStage();
+      animationFrameId = requestAnimationFrame(animateFrame);
+    }
+
+    document.getElementById("animateBtn").addEventListener("click", () => {
+      spriteCanvas = makeCroppedSprite();
+
+      if (!spriteCanvas) {
+        editorStatus.textContent = "Draw something on the canvas before animating.";
+        return;
+      }
+
+      spriteWidth = spriteCanvas.width;
+      spriteHeight = spriteCanvas.height;
+      elapsed = 0;
+      isPlaying = true;
+      lastFrameTime = 0;
+
+      editorScreen.classList.remove("active");
+      stageScreen.classList.add("active");
+      document.getElementById("stepBadge").textContent = "Step 2 of 2 · Animate";
+      document.getElementById("pageTitle").textContent = "Look what you made!";
+      document.getElementById("pageDescription").textContent = "Your drawing is now a moving character.";
+      document.getElementById("pauseBtn").textContent = "⏸ Pause";
+
+      resizeStage();
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      animationFrameId = requestAnimationFrame(animateFrame);
+    });
+
+    document.getElementById("backBtn").addEventListener("click", () => {
+      stageScreen.classList.remove("active");
+      editorScreen.classList.add("active");
+      document.getElementById("stepBadge").textContent = "Step 1 of 2 · Draw";
+      document.getElementById("pageTitle").textContent = "Make a little masterpiece";
+      document.getElementById("pageDescription").textContent =
+        "Draw an object below, then send it into the animation stage.";
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
+    });
+
+    document.getElementById("pauseBtn").addEventListener("click", event => {
+      isPlaying = !isPlaying;
+      lastFrameTime = 0;
+      event.currentTarget.textContent = isPlaying ? "⏸ Pause" : "▶ Resume";
+    });
+
+    document.getElementById("replayBtn").addEventListener("click", () => {
+      elapsed = 0;
+      isPlaying = true;
+      lastFrameTime = 0;
+      document.getElementById("pauseBtn").textContent = "⏸ Pause";
+    });
+
+    document.getElementById("motionSelect").addEventListener("change", drawStage);
+    document.getElementById("backgroundSelect").addEventListener("change", drawStage);
+    document.getElementById("speedRange").addEventListener("input", drawStage);
+
+    document.getElementById("downloadBtn").addEventListener("click", () => {
+      if (!spriteCanvas) return;
+      const link = document.createElement("a");
+      link.download = "my-sketch.png";
+      link.href = spriteCanvas.toDataURL("image/png");
+      link.click();
+    });
+
+    window.addEventListener("resize", () => {
+      if (stageScreen.classList.contains("active")) {
+        resizeStage();
+        drawStage();
+      }
+    });
+
+    updateHistoryButtons();
+  </script>
+</body>
+</html>
